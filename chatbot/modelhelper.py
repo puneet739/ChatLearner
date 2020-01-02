@@ -38,9 +38,8 @@ def get_initializer(init_op, seed=None, init_weight=None):
 
 def create_embbeding(vocab_size, embed_size, dtype=tf.float32, scope=None):
     """Create embedding matrix for both encoder and decoder."""
-    with tf.variable_scope(scope or "embeddings", dtype=dtype):
-        embedding = tf.get_variable("embedding", [vocab_size, embed_size], dtype)
-
+    with tf.compat.v1.variable_scope(scope or "embeddings", dtype=dtype):
+        embedding = tf.compat.v1.get_variable("embedding", [vocab_size, embed_size], dtype)
     return embedding
 
 

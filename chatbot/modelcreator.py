@@ -44,7 +44,7 @@ class ModelCreator(object):
         # Initializer
         initializer = model_helper.get_initializer(
             hparams.init_op, hparams.random_seed, hparams.init_weight)
-        tf.get_variable_scope().set_initializer(initializer)
+        tf.compat.v1.get_variable_scope().set_initializer(initializer)
 
         # Embeddings
         self.embedding = (model_helper.create_embbeding(vocab_size=self.vocab_size,

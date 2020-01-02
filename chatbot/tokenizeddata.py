@@ -119,20 +119,20 @@ class TokenizedData:
                 # length over ((num_bucket-1) * bucket_width) words all go into the last bucket.
                 # Bucket sentence pairs by the length of their source sentence and target sentence.
                 bucket_id = tf.maximum(src_len // bucket_width, tgt_len // bucket_width)
-                return tf.to_int64(tf.minimum(self.hparams.num_buckets, bucket_id))
+                return tf.cast(tf.minimum(self.hparams.num_buckets, bucket_id),tf.int64)
 
             # No key to filter the dataset. Therefore the key is unused.
             def reduce_func(unused_key, windowed_data):
                 return batching_func(windowed_data)
 
             batched_dataset = train_set.apply(
-                tf.contrib.data.group_by_window(key_func=key_func,
+                tf.data.experimental.group_by_window(key_func=key_func,
                                                 reduce_func=reduce_func,
                                                 window_size=self.hparams.batch_size))
         else:
             batched_dataset = batching_func(train_set)
 
-        batched_iter = batched_dataset.make_initializable_iterator()
+        batched_iter = tf.compat.v1.data.make_initializable_iterator(batched_dataset)
         (src_ids, tgt_input_ids, tgt_output_ids, src_seq_len, tgt_seq_len) = (batched_iter.get_next())
 
         return BatchedInput(initializer=batched_iter.initializer,
@@ -199,14 +199,14 @@ class TokenizedData:
 
             src_dataset = dataset.filter(lambda line:
                                          tf.logical_and(tf.size(line) > 0,
-                                                        tf.equal(tf.substr(line, 0, 2), tf.constant('Q:'))))
+                                                        tf.equal(tf.strings.substr(line, 0, 2), tf.constant('Q:'))))
             src_dataset = src_dataset.map(lambda line:
-                                          tf.substr(line, 2, MAX_LEN)).prefetch(4096)
+                                          tf.strings.substr(line, 2, MAX_LEN)).prefetch(4096)
             tgt_dataset = dataset.filter(lambda line:
                                          tf.logical_and(tf.size(line) > 0,
-                                                        tf.equal(tf.substr(line, 0, 2), tf.constant('A:'))))
+                                                        tf.equal(tf.strings.substr(line, 0, 2), tf.constant('A:'))))
             tgt_dataset = tgt_dataset.map(lambda line:
-                                          tf.substr(line, 2, MAX_LEN)).prefetch(4096)
+                                          tf.strings.substr(line, 2, MAX_LEN)).prefetch(4096)
 
             src_tgt_dataset = tf.data.Dataset.zip((src_dataset, tgt_dataset))
             if fd == 1:
@@ -223,8 +223,8 @@ class TokenizedData:
         # The following 3 steps act as a python String lower() function
         # Split to characters
         self.text_set = self.text_set.map(lambda src, tgt:
-                                          (tf.string_split([src], delimiter='').values,
-                                           tf.string_split([tgt], delimiter='').values)
+                                          (tf.compat.v1.string_split([src], delimiter='').values,
+                                           tf.compat.v1.string_split([tgt], delimiter='').values)
                                           ).prefetch(buffer_size)
         # Convert all upper case characters to lower case characters
         self.text_set = self.text_set.map(lambda src, tgt:
@@ -232,12 +232,12 @@ class TokenizedData:
                                           ).prefetch(buffer_size)
         # Join characters back to strings
         self.text_set = self.text_set.map(lambda src, tgt:
-                                          (tf.reduce_join([src]), tf.reduce_join([tgt]))
+                                          (tf.compat.v1.reduce_join([src]), tf.compat.v1.reduce_join([tgt]))
                                           ).prefetch(buffer_size)
 
         # Split to word tokens
         self.text_set = self.text_set.map(lambda src, tgt:
-                                          (tf.string_split([src]).values, tf.string_split([tgt]).values)
+                                          (tf.compat.v1.string_split([src]).values, tf.compat.v1.string_split([tgt]).values)
                                           ).prefetch(buffer_size)
         # Remove sentences longer than the model allows
         self.text_set = self.text_set.map(lambda src, tgt:
@@ -260,9 +260,9 @@ class TokenizedData:
 
 def check_vocab(vocab_file):
     """Check to make sure vocab_file exists"""
-    if tf.gfile.Exists(vocab_file):
+    if tf.io.gfile.exists(vocab_file):
         vocab_list = []
-        with codecs.getreader("utf-8")(tf.gfile.GFile(vocab_file, "rb")) as f:
+        with codecs.getreader("utf-8")(tf.io.gfile.GFile(vocab_file, "rb")) as f:
             for word in f:
                 vocab_list.append(word.strip())
     else:
@@ -279,8 +279,8 @@ def prepare_case_table():
     l3 = [chr(i) for i in range(91, 127)]
     values = tf.constant(l1 + l2 + l3)
 
-    return tf.contrib.lookup.HashTable(
-        tf.contrib.lookup.KeyValueTensorInitializer(keys, values), ' ')
+    return tf.lookup.StaticHashTable(
+        tf.lookup.KeyValueTensorInitializer(keys, values), ' ')
 
 
 class BatchedInput(namedtuple("BatchedInput",

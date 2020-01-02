@@ -17,6 +17,9 @@ import json
 import os
 import tensorflow as tf
 
+from tensorboard.plugins.hparams import api as hp
+from tensor2tensor.utils import hparam
+
 
 class HParams:
     def __init__(self, model_dir):
@@ -28,14 +31,16 @@ class HParams:
 
     @staticmethod
     def load_hparams(model_dir):
+        hparams = hparam.HParams()
         """Load hparams from an existing directory."""
         hparams_file = os.path.join(model_dir, "hparams.json")
-        if tf.gfile.Exists(hparams_file):
+        if tf.io.gfile.exists(hparams_file):
             print("# Loading hparams from {} ...".format(hparams_file))
-            with codecs.getreader("utf-8")(tf.gfile.GFile(hparams_file, "rb")) as f:
+            with codecs.getreader("utf-8")(tf.io.gfile.GFile(hparams_file, "rb")) as f:
                 try:
-                    hparams_values = json.load(f)
-                    hparams = tf.contrib.training.HParams(**hparams_values)
+                    hparams_json_values = json.load(f)
+                    for key in hparams_json_values:
+                        hparams.add_hparam(key, hparams_json_values[key] )
                 except ValueError:
                     print("Error loading hparams file.")
                     return None
